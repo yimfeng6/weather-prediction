@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>长沙天气预测可视化系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;color:#eaeaea;font-family:'Microsoft YaHei','PingFang SC',sans-serif;min-height:100vh}
+.hdr{background:linear-gradient(135deg,#0f3460,#e94560);padding:30px 0;text-align:center;
+      box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.hdr h1{font-size:32px;letter-spacing:4px;text-shadow:2px 2px 8px rgba(0,0,0,.3)}
+.hdr p{margin-top:8px;font-size:14px;opacity:.85}
+.info-bar{display:flex;justify-content:center;gap:20px;padding:20px;flex-wrap:wrap}
+.info-card{background:#16213e;border-radius:12px;padding:16px 24px;text-align:center;
+            min-width:160px;border:1px solid rgba(255,255,255,.08);box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.info-card .lbl{font-size:13px;color:#999;margin-bottom:6px}
+.info-card .val{font-size:26px;font-weight:bold}
+.red{color:#FF6B6B} .blu{color:#4ECDC4} .grn{color:#4ECDC4}
+.sec{max-width:960px;margin:25px auto;background:#16213e;border-radius:16px;padding:25px;
+     border:1px solid rgba(255,255,255,.06);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.sec-tit{font-size:20px;font-weight:bold;margin-bottom:15px;padding-left:12px;
+          border-left:4px solid #e94560}
+.chart-box{display:flex;justify-content:center}
+.ft{text-align:center;padding:25px;color:#666;font-size:13px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>🌤 长沙天气预测可视化系统</h1>
+  <p>基于随机森林回归模型 · pyecharts可视化 · 数据来源: 2345天气网</p>
+</div>
+
+<div class="info-bar">
+  <div class="info-card"><div class="lbl">数据来源</div><div class="val">2345天气网</div></div>
+  <div class="info-card"><div class="lbl">预测模型</div><div class="val">随机森林</div></div>
+  <div class="info-card"><div class="lbl">最高温 MAE</div><div class="val red">9.3℃</div></div>
+  <div class="info-card"><div class="lbl">最低温 MAE</div><div class="val blu">7.3℃</div></div>
+  <div class="info-card"><div class="lbl">生成时间</div><div class="val grn">2026-07-13 22:24</div></div>
+</div>
+
+<div class="sec">
+  <div class="sec-tit">📅 未来一周天气预报</div>
+  <div class="chart-box"><!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Awesome-pyecharts</title>
+</head>
+<body>
+
+        <style>
+            .fl-table {
+                margin: 20px;
+                border-radius: 5px;
+                font-size: 12px;
+                border: none;
+                border-collapse: collapse;
+                max-width: 100%;
+                white-space: nowrap;
+                word-break: keep-all;
+            }
+
+            .fl-table th {
+                text-align: left;
+                font-size: 20px;
+            }
+
+            .fl-table tr {
+                display: table-row;
+                vertical-align: inherit;
+                border-color: inherit;
+            }
+
+            .fl-table tr:hover td {
+                background: #00d1b2;
+                color: #F8F8F8;
+            }
+
+            .fl-table td, .fl-table th {
+                border-style: none;
+                border-top: 1px solid #dbdbdb;
+                border-left: 1px solid #dbdbdb;
+                border-bottom: 3px solid #dbdbdb;
+                border-right: 1px solid #dbdbdb;
+                padding: .5em .55em;
+                font-size: 15px;
+            }
+
+            .fl-table td {
+                border-style: none;
+                font-size: 15px;
+                vertical-align: center;
+                border-bottom: 1px solid #dbdbdb;
+                border-left: 1px solid #dbdbdb;
+                border-right: 1px solid #dbdbdb;
+                height: 30px;
+            }
+
+            .fl-table tr:nth-child(even) {
+                background: #F8F8F8;
+            }
+        </style>
+        <div id="f23b418bd9ac460097a45f7d9912868a" class="chart-container" style="">
+            <p class="title" color="#eaeaea" font-size="22px" text-align="center" padding="12px 0" > [Date] 未来一周天气预报</p>
+            <p class="subtitle" style="font-size: 12px;" > </p>
+            <table style="width:100%;border-collapse:collapse;text-align:center;">
+    <thead>
+        <tr>
+            <th>日期</th>
+            <th>星期</th>
+            <th>天气</th>
+            <th>最高温(℃)</th>
+            <th>最低温(℃)</th>
+            <th>风向</th>
+            <th>风力</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>07-14</td>
+            <td>周二</td>
+            <td>多云</td>
+            <td>26</td>
+            <td>18</td>
+            <td>北风</td>
+            <td>4-5级</td>
+        </tr>
+        <tr>
+            <td>07-15</td>
+            <td>周三</td>
+            <td>多云</td>
+            <td>26</td>
+            <td>18</td>
+            <td>北风</td>
+            <td>3-4级</td>
+        </tr>
+        <tr>
+            <td>07-16</td>
+            <td>周四</td>
+            <td>晴</td>
+            <td>26</td>
+            <td>18</td>
+            <td>北风</td>
+            <td>4-5级</td>
+        </tr>
+        <tr>
+            <td>07-17</td>
+            <td>周五</td>
+            <td>晴</td>
+            <td>26</td>
+            <td>18</td>
+            <td>北风</td>
+            <td>3-4级</td>
+        </tr>
+        <tr>
+            <td>07-18</td>
+            <td>周六</td>
+            <td>晴</td>
+            <td>27</td>
+            <td>19</td>
+            <td>南风</td>
+            <td>3-4级</td>
+        </tr>
+        <tr>
+            <td>07-19</td>
+            <td>周日</td>
+            <td>晴</td>
+            <td>26</td>
+            <td>18</td>
+            <td>北风</td>
+            <td>3-4级</td>
+        </tr>
+        <tr>
+            <td>07-20</td>
+            <td>周一</td>
+            <td>晴</td>
+            <td>27</td>
+            <td>19</td>
+            <td>南风</td>
+            <td>3-4级</td>
+        </tr>
+    </tbody>
+</table>
+        </div>
+
+
+</body>
+</html>
+</div>
+</div>
+
+<div class="sec">
+  <div class="sec-tit">📈 温度趋势 & 天气变化</div>
+  <div class="chart-box"><!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Awesome-pyecharts</title>
+                <script type="text/javascript" src="https://assets.pyecharts.org/assets/v6/echarts.min.js"></script>
+
+    
+</head>
+<body >
+    <div id="9e321913443b431583a247c2037547ad" class="chart-container" style="width:900px; height:420px; "></div>
+    <script>
+        var chart_9e321913443b431583a247c2037547ad = echarts.init(
+            document.getElementById('9e321913443b431583a247c2037547ad'), 'dark', {renderer: 'canvas', locale: 'ZH'});
+        var option_9e321913443b431583a247c2037547ad = {
+    "backgroundColor": "#16213e",
+    "animation": true,
+    "animationThreshold": 2000,
+    "animationDuration": 1000,
+    "animationEasing": "cubicOut",
+    "animationDelay": 0,
+    "animationDurationUpdate": 300,
+    "animationEasingUpdate": "cubicOut",
+    "animationDelayUpdate": 0,
+    "aria": {
+        "enabled": false
+    },
+    "series": [
+        {
+            "type": "line",
+            "name": "\u6700\u9ad8\u6e29",
+            "connectNulls": false,
+            "xAxisIndex": 0,
+            "symbol": "circle",
+            "symbolSize": 10,
+            "showSymbol": true,
+            "smooth": true,
+            "clip": true,
+            "step": false,
+            "stackStrategy": "samesign",
+            "data": [
+                [
+                    "07-14",
+                    26
+                ],
+                [
+                    "07-15",
+                    26
+                ],
+                [
+                    "07-16",
+                    26
+                ],
+                [
+                    "07-17",
+                    26
+                ],
+                [
+                    "07-18",
+                    27
+                ],
+                [
+                    "07-19",
+                    26
+                ],
+                [
+                    "07-20",
+                    27
+                ]
+            ],
+            "hoverAnimation": true,
+            "label": {
+                "show": true,
+                "position": "top",
+                "color": "#FF6B6B",
+                "margin": 8,
+                "formatter": "{c}\u2103",
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "logBase": 10,
+            "seriesLayoutBy": "column",
+            "lineStyle": {
+                "show": false,
+                "width": 3,
+                "color": "#FF6B6B"
+            },
+            "areaStyle": {
+                "opacity": 0.15,
+                "color": "#FF6B6B"
+            },
+            "itemStyle": {
+                "color": "#FF6B6B"
+            },
+            "zlevel": 0,
+            "z": 0
+        },
+        {
+            "type": "line",
+            "name": "\u6700\u4f4e\u6e29",
+            "connectNulls": false,
+            "xAxisIndex": 0,
+            "symbol": "diamond",
+            "symbolSize": 10,
+            "showSymbol": true,
+            "smooth": true,
+            "clip": true,
+            "step": false,
+            "stackStrategy": "samesign",
+            "data": [
+                [
+                    "07-14",
+                    18
+                ],
+                [
+                    "07-15",
+                    18
+                ],
+                [
+                    "07-16",
+                    18
+                ],
+                [
+                    "07-17",
+                    18
+                ],
+                [
+                    "07-18",
+                    19
+                ],
+                [
+                    "07-19",
+                    18
+                ],
+                [
+                    "07-20",
+                    19
+                ]
+            ],
+            "hoverAnimation": true,
+            "label": {
+                "show": true,
+                "position": "bottom",
+                "color": "#4ECDC4",
+                "margin": 8,
+                "formatter": "{c}\u2103",
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "logBase": 10,
+            "seriesLayoutBy": "column",
+            "lineStyle": {
+                "show": false,
+                "width": 3,
+                "color": "#4ECDC4"
+            },
+            "areaStyle": {
+                "opacity": 0.15,
+                "color": "#4ECDC4"
+            },
+            "itemStyle": {
+                "color": "#4ECDC4"
+            },
+            "zlevel": 0,
+            "z": 0
+        },
+        {
+            "type": "bar",
+            "name": "\u5929\u6c14\u6307\u6570",
+            "yAxisIndex": 1,
+            "legendHoverLink": true,
+            "data": [
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "realtimeSort": false,
+            "showBackground": false,
+            "stackStrategy": "samesign",
+            "cursor": "pointer",
+            "barWidth": "30%",
+            "barMinHeight": 0,
+            "barCategoryGap": "20%",
+            "barGap": "30%",
+            "large": false,
+            "largeThreshold": 400,
+            "seriesLayoutBy": "column",
+            "datasetIndex": 0,
+            "clip": true,
+            "zlevel": 0,
+            "z": 2,
+            "label": {
+                "show": false,
+                "margin": 8,
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "itemStyle": {
+                "color": "#45B7D1",
+                "opacity": 0.35
+            }
+        }
+    ],
+    "legend": [
+        {
+            "data": [
+                "\u6700\u9ad8\u6e29",
+                "\u6700\u4f4e\u6e29",
+                "\u5929\u6c14\u6307\u6570"
+            ],
+            "selected": {},
+            "show": true,
+            "top": "8%",
+            "padding": 5,
+            "itemGap": 10,
+            "itemWidth": 25,
+            "itemHeight": 14,
+            "textStyle": {
+                "color": "#eaeaea",
+                "richInheritPlainLabel": true
+            },
+            "backgroundColor": "transparent",
+            "borderColor": "#ccc",
+            "borderRadius": 0,
+            "pageButtonItemGap": 5,
+            "pageButtonPosition": "end",
+            "pageFormatter": "{current}/{total}",
+            "pageIconColor": "#2f4554",
+            "pageIconInactiveColor": "#aaa",
+            "pageIconSize": 15,
+            "animationDurationUpdate": 800,
+            "selector": false,
+            "selectorPosition": "auto",
+            "selectorItemGap": 7,
+            "selectorButtonGap": 10,
+            "triggerEvent": false
+        }
+    ],
+    "tooltip": {
+        "show": true,
+        "trigger": "axis",
+        "triggerOn": "mousemove|click",
+        "axisPointer": {
+            "type": "line"
+        },
+        "showContent": true,
+        "alwaysShowContent": false,
+        "showDelay": 0,
+        "hideDelay": 100,
+        "enterable": false,
+        "confine": false,
+        "appendToBody": false,
+        "transitionDuration": 0.4,
+        "displayTransition": true,
+        "textStyle": {
+            "fontSize": 14,
+            "richInheritPlainLabel": true
+        },
+        "borderWidth": 0,
+        "padding": 5,
+        "order": "seriesAsc"
+    },
+    "xAxis": [
+        {
+            "show": true,
+            "scale": false,
+            "nameLocation": "end",
+            "nameGap": 15,
+            "nameTruncate": {},
+            "nameMoveOverlap": true,
+            "axisLine": {
+                "show": true,
+                "onZero": true,
+                "onZeroAxisIndex": 0,
+                "lineStyle": {
+                    "show": false,
+                    "color": "#555"
+                }
+            },
+            "axisLabel": {
+                "show": true,
+                "color": "#eaeaea",
+                "margin": 8,
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "inverse": false,
+            "offset": 0,
+            "splitNumber": 5,
+            "minInterval": 0,
+            "silent": false,
+            "triggerEvent": false,
+            "splitLine": {
+                "show": true,
+                "lineStyle": {
+                    "show": false
+                }
+            },
+            "animation": true,
+            "animationThreshold": 2000,
+            "animationDuration": 1000,
+            "animationEasing": "cubicOut",
+            "animationDelay": 0,
+            "animationDurationUpdate": 300,
+            "animationEasingUpdate": "cubicOut",
+            "animationDelayUpdate": 0,
+            "data": [
+                "07-14",
+                "07-15",
+                "07-16",
+                "07-17",
+                "07-18",
+                "07-19",
+                "07-20"
+            ]
+        }
+    ],
+    "yAxis": [
+        {
+            "name": "\u6e29\u5ea6(\u2103)",
+            "show": true,
+            "scale": false,
+            "nameLocation": "end",
+            "nameGap": 15,
+            "nameTruncate": {},
+            "nameMoveOverlap": true,
+            "axisLine": {
+                "show": true,
+                "onZero": true,
+                "onZeroAxisIndex": 0,
+                "lineStyle": {
+                    "show": false,
+                    "color": "#555"
+                }
+            },
+            "axisLabel": {
+                "show": true,
+                "color": "#eaeaea",
+                "margin": 8,
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "inverse": false,
+            "offset": 0,
+            "splitNumber": 5,
+            "minInterval": 0,
+            "silent": false,
+            "triggerEvent": false,
+            "splitLine": {
+                "show": true,
+                "lineStyle": {
+                    "show": false,
+                    "opacity": 0.15
+                }
+            },
+            "animation": true,
+            "animationThreshold": 2000,
+            "animationDuration": 1000,
+            "animationEasing": "cubicOut",
+            "animationDelay": 0,
+            "animationDurationUpdate": 300,
+            "animationEasingUpdate": "cubicOut",
+            "animationDelayUpdate": 0
+        },
+        {
+            "name": "\u5929\u6c14\u6307\u6570",
+            "show": true,
+            "scale": false,
+            "nameLocation": "end",
+            "nameGap": 15,
+            "nameTruncate": {},
+            "nameMoveOverlap": true,
+            "axisLabel": {
+                "show": true,
+                "color": "#eaeaea",
+                "margin": 8,
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "inverse": false,
+            "position": "right",
+            "offset": 0,
+            "splitNumber": 5,
+            "minInterval": 0,
+            "silent": false,
+            "triggerEvent": false,
+            "splitLine": {
+                "show": false,
+                "lineStyle": {
+                    "show": false
+                }
+            },
+            "animation": true,
+            "animationThreshold": 2000,
+            "animationDuration": 1000,
+            "animationEasing": "cubicOut",
+            "animationDelay": 0,
+            "animationDurationUpdate": 300,
+            "animationEasingUpdate": "cubicOut",
+            "animationDelayUpdate": 0
+        }
+    ],
+    "title": [
+        {
+            "show": true,
+            "text": "\u6e29\u5ea6\u8d8b\u52bf & \u5929\u6c14\u53d8\u5316",
+            "target": "blank",
+            "subtarget": "blank",
+            "left": "center",
+            "padding": 5,
+            "itemGap": 10,
+            "textAlign": "auto",
+            "textVerticalAlign": "auto",
+            "triggerEvent": false,
+            "textStyle": {
+                "color": "#eaeaea",
+                "fontSize": 20,
+                "richInheritPlainLabel": true
+            }
+        }
+    ]
+};
+        chart_9e321913443b431583a247c2037547ad.setOption(option_9e321913443b431583a247c2037547ad);
+    </script>
+</body>
+</html>
+</div>
+</div>
+
+<div class="sec">
+  <div class="sec-tit">🗺 全国主要城市空气质量</div>
+  <div class="chart-box"><!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Awesome-pyecharts</title>
+                <script type="text/javascript" src="https://assets.pyecharts.org/assets/v6/echarts.min.js"></script>
+            <script type="text/javascript" src="https://assets.pyecharts.org/assets/v6/maps/china.js"></script>
+
+    
+</head>
+<body >
+    <div id="dbcab5cfc49740efb416423bf09b062e" class="chart-container" style="width:900px; height:550px; "></div>
+    <script>
+        var chart_dbcab5cfc49740efb416423bf09b062e = echarts.init(
+            document.getElementById('dbcab5cfc49740efb416423bf09b062e'), 'dark', {renderer: 'canvas', locale: 'ZH'});
+        var option_dbcab5cfc49740efb416423bf09b062e = {
+    "backgroundColor": "#16213e",
+    "animation": true,
+    "animationThreshold": 2000,
+    "animationDuration": 1000,
+    "animationEasing": "cubicOut",
+    "animationDelay": 0,
+    "animationDurationUpdate": 300,
+    "animationEasingUpdate": "cubicOut",
+    "animationDelayUpdate": 0,
+    "aria": {
+        "enabled": false
+    },
+    "series": [
+        {
+            "type": "map",
+            "name": "AQI\u6307\u6570",
+            "label": {
+                "show": true,
+                "color": "#333",
+                "margin": 8,
+                "fontSize": 9,
+                "richInheritPlainLabel": true,
+                "valueAnimation": false
+            },
+            "map": "china",
+            "data": [
+                {
+                    "name": "\u5317\u4eac",
+                    "value": 85
+                },
+                {
+                    "name": "\u4e0a\u6d77",
+                    "value": 62
+                },
+                {
+                    "name": "\u5e7f\u5dde",
+                    "value": 48
+                },
+                {
+                    "name": "\u6df1\u5733",
+                    "value": 42
+                },
+                {
+                    "name": "\u6210\u90fd",
+                    "value": 78
+                },
+                {
+                    "name": "\u91cd\u5e86",
+                    "value": 82
+                },
+                {
+                    "name": "\u6b66\u6c49",
+                    "value": 71
+                },
+                {
+                    "name": "\u957f\u6c99",
+                    "value": 65
+                },
+                {
+                    "name": "\u676d\u5dde",
+                    "value": 55
+                },
+                {
+                    "name": "\u5357\u4eac",
+                    "value": 68
+                },
+                {
+                    "name": "\u5929\u6d25",
+                    "value": 92
+                },
+                {
+                    "name": "\u897f\u5b89",
+                    "value": 95
+                },
+                {
+                    "name": "\u90d1\u5dde",
+                    "value": 88
+                },
+                {
+                    "name": "\u5408\u80a5",
+                    "value": 63
+                },
+                {
+                    "name": "\u5357\u660c",
+                    "value": 58
+                },
+                {
+                    "name": "\u798f\u5dde",
+                    "value": 38
+                },
+                {
+                    "name": "\u6606\u660e",
+                    "value": 32
+                },
+                {
+                    "name": "\u8d35\u9633",
+                    "value": 45
+                },
+                {
+                    "name": "\u5357\u5b81",
+                    "value": 40
+                },
+                {
+                    "name": "\u6d77\u53e3",
+                    "value": 28
+                },
+                {
+                    "name": "\u54c8\u5c14\u6ee8",
+                    "value": 75
+                },
+                {
+                    "name": "\u957f\u6625",
+                    "value": 72
+                },
+                {
+                    "name": "\u6c88\u9633",
+                    "value": 78
+                },
+                {
+                    "name": "\u5927\u8fde",
+                    "value": 55
+                },
+                {
+                    "name": "\u6d4e\u5357",
+                    "value": 85
+                },
+                {
+                    "name": "\u9752\u5c9b",
+                    "value": 52
+                },
+                {
+                    "name": "\u77f3\u5bb6\u5e84",
+                    "value": 105
+                },
+                {
+                    "name": "\u592a\u539f",
+                    "value": 88
+                },
+                {
+                    "name": "\u547c\u548c\u6d69\u7279",
+                    "value": 65
+                },
+                {
+                    "name": "\u5170\u5dde",
+                    "value": 78
+                },
+                {
+                    "name": "\u94f6\u5ddd",
+                    "value": 62
+                },
+                {
+                    "name": "\u897f\u5b81",
+                    "value": 42
+                },
+                {
+                    "name": "\u4e4c\u9c81\u6728\u9f50",
+                    "value": 70
+                },
+                {
+                    "name": "\u62c9\u8428",
+                    "value": 25
+                },
+                {
+                    "name": "\u53a6\u95e8",
+                    "value": 35
+                },
+                {
+                    "name": "\u73e0\u6d77",
+                    "value": 38
+                },
+                {
+                    "name": "\u82cf\u5dde",
+                    "value": 58
+                },
+                {
+                    "name": "\u65e0\u9521",
+                    "value": 60
+                },
+                {
+                    "name": "\u5b81\u6ce2",
+                    "value": 50
+                },
+                {
+                    "name": "\u6e29\u5dde",
+                    "value": 45
+                }
+            ],
+            "roam": true,
+            "aspectScale": 0.75,
+            "nameProperty": "name",
+            "selectedMode": false,
+            "zoom": 1,
+            "zlevel": 0,
+            "z": 2,
+            "seriesLayoutBy": "column",
+            "datasetIndex": 0,
+            "mapValueCalculation": "sum",
+            "showLegendSymbol": true,
+            "preserveAspect": false,
+            "clip": false,
+            "emphasis": {}
+        }
+    ],
+    "legend": [
+        {
+            "data": [
+                "AQI\u6307\u6570"
+            ],
+            "selected": {},
+            "show": true,
+            "padding": 5,
+            "itemGap": 10,
+            "itemWidth": 25,
+            "itemHeight": 14,
+            "backgroundColor": "transparent",
+            "borderColor": "#ccc",
+            "borderRadius": 0,
+            "pageButtonItemGap": 5,
+            "pageButtonPosition": "end",
+            "pageFormatter": "{current}/{total}",
+            "pageIconColor": "#2f4554",
+            "pageIconInactiveColor": "#aaa",
+            "pageIconSize": 15,
+            "animationDurationUpdate": 800,
+            "selector": false,
+            "selectorPosition": "auto",
+            "selectorItemGap": 7,
+            "selectorButtonGap": 10,
+            "triggerEvent": false
+        }
+    ],
+    "tooltip": {
+        "show": true,
+        "trigger": "item",
+        "triggerOn": "mousemove|click",
+        "axisPointer": {
+            "type": "line"
+        },
+        "showContent": true,
+        "alwaysShowContent": false,
+        "showDelay": 0,
+        "hideDelay": 100,
+        "enterable": false,
+        "confine": false,
+        "appendToBody": false,
+        "transitionDuration": 0.4,
+        "displayTransition": true,
+        "formatter": "{b}<br/>AQI: {c}",
+        "textStyle": {
+            "fontSize": 14,
+            "richInheritPlainLabel": true
+        },
+        "borderWidth": 0,
+        "padding": 5,
+        "order": "seriesAsc"
+    },
+    "title": [
+        {
+            "show": true,
+            "text": "\u5168\u56fd\u4e3b\u8981\u57ce\u5e02\u7a7a\u6c14\u8d28\u91cf\u6307\u6570 (AQI)",
+            "target": "blank",
+            "subtarget": "blank",
+            "left": "center",
+            "padding": 5,
+            "itemGap": 10,
+            "textAlign": "auto",
+            "textVerticalAlign": "auto",
+            "triggerEvent": false,
+            "textStyle": {
+                "color": "#eaeaea",
+                "fontSize": 20,
+                "richInheritPlainLabel": true
+            }
+        }
+    ],
+    "visualMap": {
+        "show": true,
+        "type": "piecewise",
+        "min": 0,
+        "max": 100,
+        "textStyle": {
+            "color": "#eaeaea",
+            "richInheritPlainLabel": true
+        },
+        "inRange": {
+            "color": [
+                "#50a3ba",
+                "#eac763",
+                "#d94e5d"
+            ]
+        },
+        "calculable": true,
+        "inverse": false,
+        "splitNumber": 5,
+        "hoverLink": true,
+        "orient": "vertical",
+        "left": "left",
+        "bottom": "20%",
+        "padding": 5,
+        "showLabel": true,
+        "itemWidth": 20,
+        "itemHeight": 14,
+        "borderWidth": 0,
+        "pieces": [
+            {
+                "min": 0,
+                "max": 50,
+                "label": "\u4f18 (0-50)",
+                "color": "#096"
+            },
+            {
+                "min": 51,
+                "max": 100,
+                "label": "\u826f (51-100)",
+                "color": "#ffde33"
+            },
+            {
+                "min": 101,
+                "max": 150,
+                "label": "\u8f7b\u5ea6 (101-150)",
+                "color": "#ff9933"
+            },
+            {
+                "min": 151,
+                "max": 200,
+                "label": "\u4e2d\u5ea6 (151-200)",
+                "color": "#cc0033"
+            },
+            {
+                "min": 201,
+                "max": 300,
+                "label": "\u91cd\u5ea6 (201-300)",
+                "color": "#660099"
+            }
+        ]
+    }
+};
+        chart_dbcab5cfc49740efb416423bf09b062e.setOption(option_dbcab5cfc49740efb416423bf09b062e);
+    </script>
+</body>
+</html>
+</div>
+</div>
+
+<div class="ft">
+  <p>📊 长沙天气预测可视化系统 · 随机森林回归 · pyecharts</p>
+  <p>数据来源: 2345天气网 | 仅供学习参考</p>
+</div>
+</body></html>
