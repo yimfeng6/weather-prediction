@@ -2,4 +2,9 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# 训练产物，跑一次就重新生成
+weather_model.pkl
+
+# 生成的图
 figures/*.png

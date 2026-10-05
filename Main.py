@@ -6,6 +6,7 @@ Main.py
 
 import sys, os
 import numpy as np
+import pandas as pd
 from datetime import datetime, timedelta
 
 # 确保同目录模块可导入
@@ -17,8 +18,8 @@ from pyecharts import options as opts
 from pyecharts.globals import ThemeType
 
 from GetData import get_weather_data
-from ProcessData import process_data
-from GetModel import get_model, load_model, MODEL_PATH
+from ProcessData import process_data, CSV_PATH, load_data, build_features
+from GetModel import get_model, load_model, MODEL_PATH, train_horizon_models
 
 # 输出路径
 HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "天气网.html")
@@ -44,44 +45,131 @@ PRED_DAYS  = [WEEKDAY_CN[(today + timedelta(days=i)).weekday()] for i in range(1
 # ================================================================
 #  预测
 # ================================================================
-def predict_week(model):
-    """用模型预测未来7天天气，返回结构化结果列表"""
-    print("\n" + "=" * 50)
-    print("  未来一周天气预测")
-    print("=" * 50)
+# WMO 天气代码 → 中文（Open-Meteo 用的国际标准编码）
+WMO_CN = {
+    0: "晴", 1: "多云", 2: "多云", 3: "阴",
+    45: "雾", 48: "雾",
+    51: "小雨", 53: "小雨", 55: "中雨",
+    56: "冻雨", 57: "冻雨",
+    61: "小雨", 63: "中雨", 65: "大雨",
+    66: "冻雨", 67: "冻雨",
+    71: "小雪", 73: "中雪", 75: "大雪", 77: "雪",
+    80: "阵雨", 81: "阵雨", 82: "暴雨",
+    85: "阵雪", 86: "阵雪",
+    95: "雷阵雨", 96: "雷阵雨", 99: "雷阵雨",
+}
 
-    # 长沙当月典型天气模式 (天气编码, 风向编码, 风力编码)
-    month_patterns = {
-        1:(0,0,0), 2:(2,0,0), 3:(3,1,0), 4:(3,2,0),
-        5:(4,2,3), 6:(4,2,3), 7:(0,1,3), 8:(0,1,3),
-        9:(1,2,0), 10:(0,0,0), 11:(2,0,0), 12:(0,0,0),
+# 16 方位中文（角度按气象惯例：0° = 北风，从北往东转）
+WIND_16 = ["北风", "北东北", "东北风", "东东北", "东风", "东东南", "东南风", "南东南",
+           "南风", "南西南", "西南风", "西西南", "西风", "西西北", "西北风", "北西北"]
+
+
+def degrees_to_wind(deg: float) -> str:
+    """风向角度 → 16 方位中文。"""
+    idx = int((deg % 360) / 22.5 + 0.5) % 16
+    return WIND_16[idx]
+
+
+def speed_to_level(kmh: float) -> str:
+    """风速 km/h → 中文风力描述。"""
+    for limit, label in ((5.5, "微风"), (11, "1-2级"), (19, "3级"),
+                         (28, "4级"), (38, "5级"), (49, "6级")):
+        if kmh < limit:
+            return label
+    return "7级以上"
+
+
+def _build_row(date, high, low, prev_high, prev_low,
+               recent_highs, precip, wind_kmh, wind_deg, feature_cols):
+    """
+    按 ProcessData.build_features 的口径，为某一天拼一行特征。
+
+    必须和训练时的列顺序、含义完全一致 —— 对不上的话模型给出的
+    数字看着正常，其实毫无意义（这类错误不会报错，最难查）。
+    """
+    doy = date.timetuple().tm_yday
+    rad = np.deg2rad(wind_deg)
+    values = {
+        "今日最高温": high,
+        "今日最低温": low,
+        "昨日最高温": prev_high,
+        "昨日最低温": prev_low,
+        "近3日均温": float(np.mean(recent_highs[-3:])),
+        "近7日均温": float(np.mean(recent_highs[-7:])),
+        "月份": date.month,
+        "年内sin": np.sin(2 * np.pi * doy / 365.25),
+        "年内cos": np.cos(2 * np.pi * doy / 365.25),
+        "降水量": precip,
+        "风速": wind_kmh,
+        "风向sin": np.sin(rad),
+        "风向cos": np.cos(rad),
     }
-    weather_labels = ["晴","多云","阴","小雨","中雨","大雨","雷阵雨","暴雨","小雪","中雪","大雪"]
-    wind_dir_labels = ["北风","南风","东风","西风","东北风","西南风","东南风","西北风"]
-    wind_lv_labels  = ["微风","微风","3级","3-4级","4-5级","5-6级"]
+    return [values[c] for c in feature_cols]
 
-    base = month_patterns.get(today.month, (1, 0, 0))
+
+def predict_week(models, feature_cols):
+    """
+    未来 7 天预报 —— 直接多步预测。
+
+    每个步长用自己的模型，输入**始终是最后一天的真实观测**，不做递归。
+
+    为什么不用递归
+        第一版写的是「预测明天 → 把结果喂回去预测后天」。结果七天报同一个值：
+        模型的头号特征是「今日最高温」（重要性 75%），它学到的本质就是
+        「明天≈今天」，递归迭代下去会收敛到一个固定点。
+        这是持续性型模型的固有毛病，不是代码写错了。
+
+        改成「每个步长单独训一个模型」之后，七天是七个不同的值，
+        而且误差随步长增长的趋势能直接算出来（见训练时打的那张表）。
+    """
+    print("\n" + "=" * 58)
+    print("  未来一周天气预测（直接多步）")
+    print("=" * 58)
+
+    df = load_data(CSV_PATH)
+    df_feat, _, _ = build_features(df)
+
+    # 所有步长共用这一行输入：最后一天的真实观测
+    x_last = df_feat[feature_cols].to_numpy(dtype=float)[-1:]
+    last = df_feat.iloc[-1]
+    base_date = pd.to_datetime(last["日期"]).date()
+
+    weather_cn = WMO_CN.get(int(last["天气代码"]), "多云")
+    wind_deg = float(last["风向"])
+    wind_kmh = float(last["风速"])
+
+    print(f"\n  起点: {base_date}  实况 "
+          f"{last['今日最高温']:.1f} / {last['今日最低温']:.1f} ℃")
+    print(f"  天气/风向/风力沿用最后一天的观测"
+          f"（这几个量本身也需要预报，这里做了简化）")
+
     results = []
+    print(f"\n  {'日期':>6} {'星期':>4}  {'天气':>5}  {'高温':>6} {'低温':>6}  "
+          f"{'风向':>6} {'风力':>6}")
+    print(f"  {'─' * 56}")
 
-    print(f"\n  {'日期':>6} {'星期':>4}  {'天气':>4}  {'高温':>4} {'低温':>4}  {'风向':>4} {'风力':>6}")
-    print(f"  {'─'*44}")
+    for h in range(1, 8):
+        d = base_date + timedelta(days=h)
+        pred = models[h].predict(x_last)[0]
+        high, low = float(pred[0]), float(pred[1])
 
-    for i in range(7):
-        wc = int(np.clip(base[0] + np.random.choice([-1,0,0,1]), 0, 10))
-        wd = int(np.clip(base[1] + np.random.choice([0,0,1,-1]), 0, 7))
-        wl = int(np.clip(base[2] + np.random.choice([0,0,1]), 0, 5))
+        results.append(dict(
+            日期=d.strftime("%m-%d"),
+            星期=WEEKDAY_CN[d.weekday()],
+            天气=weather_cn,
+            最高温=int(round(high)),
+            最低温=int(round(low)),
+            风向=degrees_to_wind(wind_deg),
+            风力=speed_to_level(wind_kmh),
+        ))
+        r = results[-1]
+        mark = "" if h <= 3 else "   ← 仅供趋势参考"
+        print(f"  {r['日期']:>6} {r['星期']:>4}  {r['天气']:>5}  "
+              f"{r['最高温']:>4}℃ {r['最低温']:>4}℃  "
+              f"{r['风向']:>6} {r['风力']:>6}{mark}")
 
-        pred = model.predict(np.array([[wc, wd, wl, today.month]]))[0]
-        high, low = int(round(pred[0])), int(round(pred[1]))
-        if high <= low:
-            high = low + np.random.randint(3, 7)
-
-        r = dict(日期=PRED_DATES[i], 星期=PRED_DAYS[i],
-                 天气=weather_labels[wc], 最高温=high, 最低温=low,
-                 风向=wind_dir_labels[wd], 风力=wind_lv_labels[wl])
-        results.append(r)
-        print(f"  {r['日期']:>6} {r['星期']:>4}  {r['天气']:>4}  {r['最高温']:>3}℃ {r['最低温']:>3}℃  {r['风向']:>4} {r['风力']:>6}")
-
+    print(f"\n  ⚠ 第 1~3 天误差较小，第 4 天往后越来越接近「气候平均」，")
+    print(f"     只能当趋势看。具体误差见上一步那张表。")
     print(f"\n  ✓ 预测完成")
     return results
 
@@ -326,13 +414,21 @@ def main():
             print(f"  最高温 MAE: {metrics['mae_high']:.2f}°C")
             print(f"  最低温 MAE: {metrics['mae_low']:.2f}°C")
         else:
-            model, metrics = get_model(X_train, y_train, X_val, y_val)
+            model, metrics = get_model(X_train, y_train, X_val, y_val,
+                                       feature_names=feat_cols)
     except Exception as e:
         print(f"  ✗ 模型训练失败: {e}"); return
 
-    # 4. 预测一周天气
+    # 4. 训练多步模型（每个步长一个），再用它预测一周
     print("\n【步骤4】预测未来一周")
-    preds = predict_week(model)
+    try:
+        _df = load_data()
+        _df_feat, _feats, _ = build_features(_df)
+        horizon_models = train_horizon_models(_df_feat, _feats)
+    except Exception as e:
+        print(f"  ✗ 多步模型训练失败: {e}")
+        return
+    preds = predict_week(horizon_models, _feats)
 
     # 5. pyecharts 可视化
     print("\n【步骤5】生成可视化图表")

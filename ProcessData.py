@@ -1,147 +1,198 @@
 # -*- coding: utf-8 -*-
 """
 ProcessData.py
-功能：处理CSV天气数据，温度转整型，SimpleImputer填充缺失值，按8:2划分训练集与验证集
+功能：从 CSV 构造特征与标签，按时间顺序切分训练集/验证集
+
+────────────────────────────────────────────────────────
+这次改了两件事
+────────────────────────────────────────────────────────
+
+【一】加了滞后特征
+
+原来的特征是这四个：
+    天气编码、风向编码、风力编码、月份
+
+**没有包含前几天的温度。** 而气温是高度自相关的 —— 昨天几度，
+是预测今天几度最有力的信息，比风向风力加起来都管用。
+用那四个特征预测温度，MAE 只能做到 4~6°C，属于「模型在瞎猜」。
+
+现在加了：
+    今日/昨日最高低温、前3天均温、前7天均温
+
+【二】切分改成按时间顺序
+
+原来是 train_test_split(shuffle=True)。对时间序列来说这是**数据泄漏** ——
+会把「8月20日」放进训练集、拿「8月15日」当验证集，模型等于提前看到了答案。
+报出来的 MAE 会虚高，看着好看但没意义。
+
+时间序列只有一种切法：**用过去训练，用未来验证。**
+
+────────────────────────────────────────────────────────
 """
 
-import pandas as pd
-import numpy as np
-from sklearn.impute import SimpleImputer
-from sklearn.model_selection import train_test_split
 import os
 
-# CSV文件路径
+import numpy as np
+import pandas as pd
+
 CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weather_data.csv")
 
 
-def load_data(csv_path=CSV_PATH):
-    """加载CSV天气数据"""
+def load_data(csv_path: str = CSV_PATH) -> pd.DataFrame:
+    """加载 CSV。"""
     df = pd.read_csv(csv_path, encoding="utf-8-sig")
-    print(f"  数据加载完成: {df.shape[0]}行 × {df.shape[1]}列")
-    print(f"  列名: {list(df.columns)}")
+    df["日期"] = pd.to_datetime(df["日期"])
+    df = df.sort_values("日期").reset_index(drop=True)
+    print(f"  数据加载完成: {df.shape[0]} 行 × {df.shape[1]} 列")
+    print(f"  日期范围: {df['日期'].iloc[0].date()} ~ {df['日期'].iloc[-1].date()}")
     return df
 
 
-def preprocess(df):
+def build_features(df: pd.DataFrame):
     """
-    数据清洗与预处理
-    步骤: 温度转整型 → 编码分类特征 → SimpleImputer填充缺失值
+    构造特征矩阵和标签。
+
+    任务定义：**用今天和过去几天的信息，预测明天**
+    所以第 T 行是「T 日的已知信息 → T+1 日的温度」。
+
+    返回: (带特征的 DataFrame, 特征列名列表)
     """
-    print("\n  --- 数据预处理 ---")
+    print("\n  --- 构造特征 ---")
+    out = df.copy()
 
-    # 1. 温度转为整型
-    for col in ["最高温", "最低温"]:
-        df[col] = (
-            df[col].astype(str)
-            .str.extract(r"(-?\d+)")[0]
-            .astype(float)
-        )
-        print(f"  {col}: 均温{df[col].mean():.1f}°C, 范围[{df[col].min()}, {df[col].max()}]")
+    # ---- 1. 滞后特征：过去几天的温度 ----
+    #
+    # 这是这次修改的核心。气温的日内/日间延续性极强，
+    # 不加这几个特征，模型基本是在瞎猜。
+    out["今日最高温"] = out["最高温"]
+    out["今日最低温"] = out["最低温"]
 
-    # 2. 分类特征编码
-    # 天气状况 → 数值
-    weather_map = {
-        "晴": 0, "多云": 1, "阴": 2, "小雨": 3,
-        "中雨": 4, "大雨": 5, "雷阵雨": 6, "暴雨": 7,
-        "小雪": 8, "中雪": 9, "大雪": 10, "雾": 11, "霾": 12,
-    }
-    # 处理"转"型天气（如"雷阵雨转多云"），取第一个天气类型
-    def map_weather(w):
-        if not isinstance(w, str):
-            return 2
-        w = w.split("转")[0].strip()
-        return weather_map.get(w, 2)
-    df["天气编码"] = df["天气"].apply(map_weather)
+    out["昨日最高温"] = out["最高温"].shift(1)
+    out["昨日最低温"] = out["最低温"].shift(1)
 
-    # 风向 → 数值
-    wind_dir_map = {
-        "北风": 0, "东北风": 1, "东风": 2, "东南风": 3,
-        "南风": 4, "西南风": 5, "西风": 6, "西北风": 7, "无持续风向": 8,
-    }
-    df["风向编码"] = df["风向"].map(wind_dir_map).fillna(0)
+    # 前 3 天 / 前 7 天的滑动平均 —— 抹掉单日波动，看趋势
+    out["近3日均温"] = out["最高温"].rolling(3).mean()
+    out["近7日均温"] = out["最高温"].rolling(7).mean()
 
-    # 风力 → 数值
-    wind_level_map = {
-        "微风": 0, "<3级": 1, "3-4级": 2, "4-5级": 3,
-        "5-6级": 4, "6-7级": 5, "7-8级": 6, "8-9级": 7,
-        "1级": 1, "2级": 2, "3级": 3, "4级": 4, "5级": 5, "6级": 6,
-    }
-    df["风力编码"] = df["风力"].map(wind_level_map).fillna(0)
+    # ---- 2. 时间特征：让模型知道「现在是几月/一年中的第几天」 ----
+    #
+    # 季节性是气温最强的规律之一，不给这个特征模型学不到年周期。
+    out["月份"] = out["日期"].dt.month
+    doy = out["日期"].dt.dayofyear
+    # 用 sin/cos 表示周期，而不是直接用「第几天」——
+    # 否则 12月31日(365) 和 1月1日(1) 在数值上差 364，但实际只差一天
+    out["年内sin"] = np.sin(2 * np.pi * doy / 365.25)
+    out["年内cos"] = np.cos(2 * np.pi * doy / 365.25)
 
-    # 提取月份作为季节特征
-    df["月份"] = pd.to_datetime(
-        "2025-" + df["日期"].astype(str).str.strip(),
-        format="%Y-%m-%d", errors="coerce"
-    ).dt.month
-    df["月份"] = df["月份"].fillna(df["月份"].median())
+    # ---- 3. 气象特征 ----
+    out["降水量"] = out["降水量"]
+    out["风速"] = out["风速"]
+    # 风向同理：0° 和 359° 在数值上差 359，实际只差 1 度。
+    # 直接喂角度是经典错误，要转成 sin/cos。
+    rad = np.deg2rad(out["风向"])
+    out["风向sin"] = np.sin(rad)
+    out["风向cos"] = np.cos(rad)
 
-    # 3. 构建特征矩阵
-    feature_cols = ["天气编码", "风向编码", "风力编码", "月份"]
-    target_cols = ["最高温", "最低温"]
-    all_cols = feature_cols + target_cols
+    # ---- 4. 标签：明天的温度 ----
+    out["明日最高温"] = out["最高温"].shift(-1)
+    out["明日最低温"] = out["最低温"].shift(-1)
 
-    # 统计缺失值
-    missing = df[all_cols].isnull().sum()
-    if missing.sum() > 0:
-        print(f"\n  缺失值:\n{missing[missing > 0].to_string()}")
-    else:
-        print("  无缺失值")
+    feature_cols = [
+        "今日最高温", "今日最低温",
+        "昨日最高温", "昨日最低温",
+        "近3日均温", "近7日均温",
+        "月份", "年内sin", "年内cos",
+        "降水量", "风速", "风向sin", "风向cos",
+    ]
+    target_cols = ["明日最高温", "明日最低温"]
 
-    # 4. SimpleImputer 填充缺失值（均值策略）
-    imputer = SimpleImputer(strategy="mean")
-    df_imputed = pd.DataFrame(
-        imputer.fit_transform(df[all_cols]),
-        columns=all_cols
-    )
+    # 首尾会因 shift/rolling 产生空值，丢掉
+    before = len(out)
+    out = out.dropna(subset=feature_cols + target_cols).reset_index(drop=True)
+    print(f"  构造完成: {len(out)} 个可用样本（丢掉首尾 {before - len(out)} 行）")
+    print(f"  特征 {len(feature_cols)} 个: {', '.join(feature_cols)}")
+    print(f"  标签: 明日最高温 / 明日最低温")
 
-    # 温度转为整型
-    for col in target_cols:
-        df_imputed[col] = df_imputed[col].round().astype(int)
-
-    print(f"  预处理完成: {df_imputed.shape[0]}样本 × {len(feature_cols)}特征")
-    return df_imputed, feature_cols
+    return out, feature_cols, target_cols
 
 
-def split_dataset(df, feature_cols, test_size=0.2):
+def split_dataset(df: pd.DataFrame, feature_cols: list, target_cols: list,
+                  test_size: float = 0.2):
     """
-    按8:2划分训练集与验证集
-    返回: X_train, X_val, y_train, y_val
+    按时间顺序切分 —— **不打乱**。
+
+    前 80% 训练、后 20% 验证。这样验证集是「训练时没见过的未来」，
+    得到的 MAE 才是真实的预测能力。
     """
-    X = df[feature_cols].values
-    y = df[["最高温", "最低温"]].values  # 双目标回归
+    X = df[feature_cols].to_numpy(dtype=float)
+    y = df[target_cols].to_numpy(dtype=float)
 
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=test_size, random_state=42, shuffle=True
-    )
+    n = len(df)
+    cut = int(n * (1 - test_size))
 
-    print(f"\n  训练集: X{X_train.shape}  y{y_train.shape}")
-    print(f"  验证集: X{X_val.shape}  y{y_val.shape}")
-    print(f"  特征列: {feature_cols}")
+    X_train, X_val = X[:cut], X[cut:]
+    y_train, y_val = y[:cut], y[cut:]
+
+    print(f"\n  --- 切分（按时间，不打乱）---")
+    print(f"  训练集: {X_train.shape[0]} 天  "
+          f"({df['日期'].iloc[0].date()} ~ {df['日期'].iloc[cut-1].date()})")
+    print(f"  验证集: {X_val.shape[0]} 天  "
+          f"({df['日期'].iloc[cut].date()} ~ {df['日期'].iloc[-1].date()})")
 
     return X_train, X_val, y_train, y_val
 
 
-def process_data(csv_path=CSV_PATH):
-    """
-    数据处理主函数
-    返回: X_train, X_val, y_train, y_val, feature_cols
-    """
-    print("=" * 50)
+def process_data(csv_path: str = CSV_PATH):
+    """主流程：加载 → 构造特征 → 按时间切分。"""
+    print("=" * 58)
     print("  天气数据预处理")
-    print("=" * 50)
+    print("=" * 58)
 
-    # 加载
     df = load_data(csv_path)
-
-    # 预处理
-    df_clean, feature_cols = preprocess(df)
-
-    # 划分
-    X_train, X_val, y_train, y_val = split_dataset(df_clean, feature_cols)
+    df_feat, feature_cols, target_cols = build_features(df)
+    X_train, X_val, y_train, y_val = split_dataset(df_feat, feature_cols, target_cols)
 
     return X_train, X_val, y_train, y_val, feature_cols
 
 
 if __name__ == "__main__":
-    X_train, X_val, y_train, y_val, feature_cols = process_data()
-    print("\n  ✓ 预处理完成！")
+    X_train, X_val, y_train, y_val, feat = process_data()
+    print("\n  ✓ 预处理完成")
+    print(f"     X_train {X_train.shape}   y_train {y_train.shape}")
+    print(f"     X_val   {X_val.shape}   y_val   {y_val.shape}")
+
+
+def build_horizon_dataset(df_feat, feature_cols, max_h: int = 7):
+    """
+    为「直接多步预测」准备数据。
+
+    为什么要这个东西
+        一开始写的是递归预测：用模型预测明天 → 把明天的预测值喂回去预测后天。
+        结果**收敛成一个常数**：模型的头号特征是"今日最高温"（重要性 75%），
+        它学到的本质是"明天≈今天"，递归下去就变成一个固定点，七天报同一个值。
+
+        这是"持续性型模型 + 递归"的固有毛病，不是代码写错了。
+
+    换个思路：**每个步长单独训一个模型**。
+        模型 h=1 学「今天 → 明天」
+        模型 h=2 学「今天 → 后天」
+        ...
+        模型 h=7 学「今天 → 第 7 天」
+        预测时全部用"最后一天的真实数据"当输入，不做任何递归。
+
+        这叫直接多步预测（direct multi-step）。好处是没有误差累积，
+        代价是要训 7 个模型，而且远处的模型本质上是在学"气候平均"。
+
+    返回: {1: (X, y), 2: (X, y), ..., max_h: (X, y)}
+          其中 X 是当天的特征，y 是 h 天后的 [最高温, 最低温]
+    """
+    X_all = df_feat[feature_cols].to_numpy(dtype=float)
+    base = df_feat[["今日最高温", "今日最低温"]].to_numpy(dtype=float)
+
+    dataset = {}
+    for h in range(1, max_h + 1):
+        y = np.roll(base, -h, axis=0)
+        y[-h:] = np.nan          # 末尾 h 行没有未来数据
+        valid = ~np.isnan(y).any(axis=1)
+        dataset[h] = (X_all[valid], y[valid])
+    return dataset
